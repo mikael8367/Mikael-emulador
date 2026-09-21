@@ -14,4 +14,4 @@ A compatibilidade de jogos Windows depende do processador ARM64, GPU Vulkan, mem
 
 ## Fluxo de execução
 
-O hub encaminha WAD/PK3 para o UZDoom Companion e EXE/MSI para um Windows Companion instalado. Se o pacote correspondente não estiver instalado, o usuário recebe uma mensagem explicando qual companion falta. Essa divisão evita manter um launcher que apenas exibe “iniciado” sem haver um engine real carregando o jogo.
+O hub abre o UZDoom Companion quando ele está instalado e orienta o usuário a importar ou selecionar o mesmo WAD dentro da biblioteca do companion. Isso é necessário porque cada APK tem seu próprio armazenamento privado no Android. Para EXE/MSI, o hub encaminha para um Windows Companion instalado. Se o pacote correspondente não estiver instalado, o usuário recebe uma mensagem explicando qual companion falta. Essa divisão evita manter um launcher que apenas exibe “iniciado” sem haver um engine real carregando o jogo.

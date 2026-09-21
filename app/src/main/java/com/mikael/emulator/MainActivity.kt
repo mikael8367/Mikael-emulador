@@ -660,6 +660,13 @@ private fun launchWindowsContent(context: android.content.Context, game: Game): 
 }
 
 private fun launchDoomContent(context: android.content.Context, game: Game): LaunchOutcome {
+    val companionLauncher = context.packageManager.getLaunchIntentForPackage("com.msa.freedoom")
+    if (companionLauncher != null) {
+        return runCatching {
+            context.startActivity(companionLauncher)
+            LaunchOutcome(true, "UZDoom Companion aberto. Importe ou selecione ${game.name} na biblioteca do companion para iniciar.")
+        }.getOrElse { LaunchOutcome(false, "${game.name}: não foi possível abrir o UZDoom Companion.") }
+    }
     val uri = resolveDoomUri(context, game) ?: return LaunchOutcome(false, "${game.name}: não foi possível preparar o WAD/PK3 para o engine DOOM.")
     val mime = if (game.extension.uppercase() == "PK3") "application/zip" else "application/octet-stream"
     val baseIntent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

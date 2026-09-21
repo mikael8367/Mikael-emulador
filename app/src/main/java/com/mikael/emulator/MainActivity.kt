@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.res.painterResource
 import android.widget.ImageView
 import com.mikael.emulator.data.Game
 import com.mikael.emulator.diagnostics.AndroidDeviceDiagnostics
@@ -393,9 +395,12 @@ private fun LibraryScreen(games: List<Game>, selectedGame: Game?, onSelect: (Gam
 @Composable
 private fun Header() {
     Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("MIKAEL", color = Violet, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
-            Text("Game Hub", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Image(painter = painterResource(id = R.drawable.mikael_mark), contentDescription = "Logo Mikael Game Hub", modifier = Modifier.size(42.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("MIKAEL", color = Violet, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+                Text("Game Hub", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            }
         }
         Surface(color = Mint.copy(alpha = .12f), shape = RoundedCornerShape(50.dp), border = BorderStroke(1.dp, Mint.copy(alpha = .28f))) {
             Row(Modifier.padding(horizontal = 11.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {

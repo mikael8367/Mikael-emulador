@@ -37,6 +37,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -321,6 +323,8 @@ private fun ErrorDialog(context: android.content.Context, message: String, onDis
 
 @Composable
 private fun LibraryScreen(games: List<Game>, selectedGame: Game?, onSelect: (Game) -> Unit, onImport: () -> Unit, importMessage: String?, playMessage: String?, diagnostics: DeviceDiagnostics, onPlay: (Game) -> Unit, modifier: Modifier) {
+    var search by remember { mutableStateOf("") }
+    val filteredGames = games.filter { it.name.contains(search, ignoreCase = true) }
     BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         val wide = maxWidth >= 700.dp
         if (wide) {
@@ -332,16 +336,18 @@ private fun LibraryScreen(games: List<Game>, selectedGame: Game?, onSelect: (Gam
                     LegalNotice()
                 }
                 LazyColumn(Modifier.weight(1.35f), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 18.dp, bottom = 18.dp)) {
+                    item { LibrarySearch(search, { search = it }) }
                     item {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column { Text("Minha biblioteca", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text("Seus executáveis, seus containers", color = Muted, style = MaterialTheme.typography.bodySmall) }
-                            Text("${games.size} jogos", color = Violet, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                            Text("${filteredGames.size} jogos", color = Violet, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                         }
                     }
                     importMessage?.let { message -> item { StatusBanner(message, message.contains("adicionado")) } }
                     playMessage?.let { message -> item { StatusBanner(message, false) } }
                     if (games.isEmpty()) item { EmptyLibrary(onImport) }
-                    items(games, key = { it.id }) { game -> GameCard(game, onSelect, selectedGame?.id == game.id, onPlay) }
+                    else if (filteredGames.isEmpty()) item { NoSearchResults(search) }
+                    items(filteredGames, key = { it.id }) { game -> GameCard(game, onSelect, selectedGame?.id == game.id, onPlay) }
                 }
             }
         } else {
@@ -349,16 +355,18 @@ private fun LibraryScreen(games: List<Game>, selectedGame: Game?, onSelect: (Gam
                 item { Header() }
                 item { HeroCard(onImport) }
                 item { QuickStats(games.size, diagnostics) }
+                item { LibrarySearch(search, { search = it }) }
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column { Text("Minha biblioteca", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text("Seus executáveis, seus containers", color = Muted, style = MaterialTheme.typography.bodySmall) }
-                        Text("${games.size} jogos", color = Violet, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text("${filteredGames.size} jogos", color = Violet, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
                 }
                 importMessage?.let { message -> item { StatusBanner(message, message.contains("adicionado")) } }
                 playMessage?.let { message -> item { StatusBanner(message, false) } }
                 if (games.isEmpty()) item { EmptyLibrary(onImport) }
-                items(games, key = { it.id }) { game -> GameCard(game, onSelect, selectedGame?.id == game.id, onPlay) }
+                else if (filteredGames.isEmpty()) item { NoSearchResults(search) }
+                items(filteredGames, key = { it.id }) { game -> GameCard(game, onSelect, selectedGame?.id == game.id, onPlay) }
                 item { LegalNotice() }
             }
         }
@@ -377,6 +385,35 @@ private fun Header() {
                 Box(Modifier.size(7.dp).clip(CircleShape).background(Mint))
                 Text("DISPOSITIVO PRONTO", color = Mint, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+@Composable
+private fun LibrarySearch(value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Buscar jogo ou executável", color = Muted) },
+        leadingIcon = { Text("⌕", color = Violet, style = MaterialTheme.typography.titleLarge) },
+        shape = RoundedCornerShape(15.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Violet,
+            unfocusedBorderColor = Color.White.copy(alpha = .1f),
+            focusedContainerColor = Panel,
+            unfocusedContainerColor = Panel
+        )
+    )
+}
+
+@Composable
+private fun NoSearchResults(query: String) {
+    Surface(color = Violet.copy(alpha = .08f), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Violet.copy(alpha = .2f))) {
+        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("⌕", color = Violet, style = MaterialTheme.typography.headlineSmall)
+            Column { Text("Nenhum jogo encontrado", fontWeight = FontWeight.Bold); Text("Não encontramos resultados para “$query”.", color = Muted, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
@@ -445,6 +482,7 @@ private fun GameCard(game: Game, onSelect: (Game) -> Unit, selected: Boolean, on
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(game.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Text("${game.extension}  •  ${game.container}", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text("${game.fileSize}  •  ${game.lastPlayed}", color = Color(0xFF777188), style = MaterialTheme.typography.labelSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Surface(color = Amber.copy(alpha = .12f), shape = RoundedCornerShape(6.dp)) { Text("RUNTIME PENDENTE", color = Amber, modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) }
                 }

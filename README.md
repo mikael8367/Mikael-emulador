@@ -29,7 +29,9 @@ O app já inclui:
 
 ## Compilação
 
-O ambiente local desta sessão não possui Android SDK/Gradle instalados. Para gerar o APK ARM64 em uma máquina Android configurada:
+O workflow `.github/workflows/android.yml` instala Android SDK, NDK, CMake e Gradle e gera automaticamente o APK ARM64 como artefato do GitHub Actions.
+
+Para gerar o APK ARM64 manualmente em uma máquina Android configurada:
 
 ```bash
 gradle wrapper --gradle-version 8.9

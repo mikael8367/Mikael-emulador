@@ -570,14 +570,24 @@ private fun ComponentsScreen(diagnostics: DeviceDiagnostics, modifier: Modifier)
         Triple("VKD3D-Proton", "DirectX 12 via Vulkan", diagnostics.vkd3d),
         Triple("Mesa / Vulkan", "Backend gráfico do Android", diagnostics.vulkan),
         Triple("OpenGL ES", "Fallback gráfico", diagnostics.openGl),
-        Triple("GZDoom", "Engine para DOOM, WAD e PK3", "Não instalado"),
-        Triple("Chocolate Doom", "Engine clássico para WAD", "Não instalado"),
         Triple("UZDoom Companion", "Engine real para WAD/PK3 com toque", "APK separado"),
+        Triple("GZDoom", "Engine compatível com mods avançados de DOOM", "Incluído no Companion"),
+        Triple("Chocolate Doom", "Engine clássico para WAD", "Compatível externamente"),
         Triple("Windows Companion", "Wine + Box64/Box86 + DXVK para EXE", "APK separado"),
+        Triple("SDL2", "Janela, superfície e ciclo do engine", "Incluído no Companion"),
+        Triple("OpenAL", "Áudio 3D e efeitos do jogo", "Incluído no Companion"),
+        Triple("ZMusic", "Música MIDI e trilhas avançadas", "Incluído no Companion"),
+        Triple("Touch Controls", "Controles virtuais para tela", "Incluído no Companion"),
         Triple("Gamepad e teclado", "Entrada e mapeamento de controles", "Interface pronta"),
-        Triple("Áudio SDL", "Som e música dos engines", "Pendente"),
+        Triple("Áudio SDL", "Som e música dos engines", "Incluído no Companion"),
         Triple("Importador de jogos", "EXE, MSI, WAD e PK3", "Disponível"),
-        Triple("Bridge JNI/C++", "Ponte para o runtime nativo", if (NativeBridge.isLoaded) "Disponível" else "Ausente")
+        Triple("SAF / FileProvider", "Acesso seguro aos arquivos escolhidos", "Disponível"),
+        Triple("Gerenciador de containers", "Prefixos isolados por jogo", "Disponível"),
+        Triple("Resolução", "Configuração persistente do render", "Disponível"),
+        Triple("Memória RAM", "Limite seguro por dispositivo", "Disponível"),
+        Triple("Bridge JNI/C++", "Ponte para o runtime nativo", if (NativeBridge.isLoaded) "Disponível" else "Ausente"),
+        Triple("Diagnóstico", "CPU, GPU, Vulkan, RAM e Android", "Disponível"),
+        Triple("Logs copiáveis", "Relatórios de erro de inicialização", "Disponível")
     )
     BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         val wide = maxWidth >= 700.dp

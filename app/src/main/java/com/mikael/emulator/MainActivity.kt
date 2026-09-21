@@ -59,6 +59,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.ImageView
 import com.mikael.emulator.data.Game
 import com.mikael.emulator.diagnostics.AndroidDeviceDiagnostics
 import com.mikael.emulator.diagnostics.DeviceDiagnostics
@@ -109,6 +111,7 @@ private fun MikaelApp() {
     var launchingGame by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val diagnostics = remember { AndroidDeviceDiagnostics(context).read() }
+    val openGameTypes = arrayOf("*/*")
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val name = getDisplayName(context, uri)
@@ -126,6 +129,11 @@ private fun MikaelApp() {
             return@rememberLauncherForActivityResult
         }
         pendingGame = Game(name = name.substringBeforeLast('.'), executableUri = uri.toString(), extension = extension, fileSize = formatFileSize(getFileSize(context, uri)))
+    }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        pendingGame = pendingGame?.copy(coverUri = uri.toString())
     }
 
     Scaffold(
@@ -157,8 +165,8 @@ private fun MikaelApp() {
         }
     ) { padding ->
         when (tab) {
-            0 -> DashboardScreen(games.size, diagnostics, { picker.launch(arrayOf("application/octet-stream", "application/x-msdownload", "application/zip")) }, Modifier.padding(padding))
-            1 -> LibraryScreen(games, selectedGame, { selectedGame = it }, { picker.launch(arrayOf("application/octet-stream", "application/x-msdownload", "application/zip")) }, importMessage, playMessage, diagnostics, { game ->
+            0 -> DashboardScreen(games.size, diagnostics, { picker.launch(openGameTypes) }, Modifier.padding(padding))
+            1 -> LibraryScreen(games, selectedGame, { selectedGame = it }, { picker.launch(openGameTypes) }, importMessage, playMessage, diagnostics, { game ->
                 if (launchingGame == null) {
                     launchingGame = game.name
                     playMessage = "${game.name}: preparando o arquivo e verificando o runtime..."
@@ -181,6 +189,7 @@ private fun MikaelApp() {
     pendingGame?.let { game ->
         GameConfirmationDialog(
             game = game,
+            onPickCover = { coverPicker.launch(arrayOf("image/*")) },
             onConfirm = {
                 if (games.any { it.executableUri == game.executableUri }) {
                     importMessage = "Esse arquivo já está na biblioteca."
@@ -259,17 +268,22 @@ private fun DashboardScreen(gameCount: Int, diagnostics: DeviceDiagnostics, onIm
 }
 
 @Composable
-private fun GameConfirmationDialog(game: Game, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+private fun GameConfirmationDialog(game: Game, onPickCover: () -> Unit, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(color = Panel, shape = RoundedCornerShape(26.dp), border = BorderStroke(1.dp, Violet.copy(alpha = .35f))) {
             Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("Confirmar jogo", color = Violet, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
                 Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(listOf(VioletDark, Color(0xFF15112A), Color(0xFF102A37)))), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(game.name.take(1).uppercase(), color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
-                        Text("CAPA DO JOGO", color = Mint, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    if (game.coverUri.isNotBlank()) {
+                        AndroidView(factory = { ImageView(it).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, update = { it.setImageURI(Uri.parse(game.coverUri)) }, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(game.name.take(1).uppercase(), color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
+                            Text("SEM CAPA", color = Mint, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
+                TextButton(onClick = onPickCover, modifier = Modifier.fillMaxWidth()) { Text(if (game.coverUri.isBlank()) "＋ Adicionar foto da capa" else "Trocar foto da capa", color = Violet, fontWeight = FontWeight.Bold) }
                 Text(game.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column { Text("Arquivo", color = Muted, style = MaterialTheme.typography.labelSmall); Text(".${game.extension.lowercase()}", fontWeight = FontWeight.SemiBold) }
@@ -476,7 +490,8 @@ private fun GameCard(game: Game, onSelect: (Game) -> Unit, selected: Boolean, on
     Card(onClick = { onSelect(game) }, colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFF211B3A) else Panel), shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, if (selected) Violet.copy(alpha = .65f) else Color.White.copy(alpha = .06f))) {
         Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(62.dp).clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(Violet, Color(0xFF2D1C68)))), contentAlignment = Alignment.Center) {
-                Text(game.name.take(1).uppercase(), color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                if (game.coverUri.isNotBlank()) AndroidView(factory = { ImageView(it).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, update = { it.setImageURI(Uri.parse(game.coverUri)) }, modifier = Modifier.fillMaxSize())
+                else Text(game.name.take(1).uppercase(), color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
             }
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -637,6 +652,7 @@ private fun saveGames(context: android.content.Context, games: List<Game>) {
             put("lastPlayed", game.lastPlayed)
             put("runtime", game.runtime)
             put("fileSize", game.fileSize)
+            put("coverUri", game.coverUri)
         })
     }
     context.getSharedPreferences("mikael_games", android.content.Context.MODE_PRIVATE).edit().putString("library", json.toString()).apply()
@@ -656,7 +672,8 @@ private fun loadGames(context: android.content.Context): List<Game> {
                 container = item.optString("container", "Padrão"),
                 lastPlayed = item.optString("lastPlayed", "Nunca iniciado"),
                 runtime = item.optString("runtime", "Ainda não implementado"),
-                fileSize = item.optString("fileSize", "Tamanho desconhecido")
+                fileSize = item.optString("fileSize", "Tamanho desconhecido"),
+                coverUri = item.optString("coverUri", "")
             )
         }
     }.getOrDefault(emptyList())

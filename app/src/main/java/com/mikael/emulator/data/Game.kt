@@ -10,7 +10,8 @@ data class Game(
     val container: String = "Padrão",
     val lastPlayed: String = "Nunca iniciado",
     val runtime: String = "Ainda não implementado",
-    val fileSize: String = "Tamanho desconhecido"
+    val fileSize: String = "Tamanho desconhecido",
+    val coverUri: String = ""
 )
 
 data class ContainerProfile(

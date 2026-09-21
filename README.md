@@ -21,6 +21,7 @@ O app já inclui:
 - perfil inicial **DOOM** sem arquivos protegidos incluídos; ao importar um `DOOM1.WAD` próprio, o perfil inicial é substituído pelo jogo real;
 - catálogo ampliado de componentes com Wine, Box64/Box86, DXVK, VKD3D-Proton, Mesa/Vulkan, OpenGL ES, GZDoom, Chocolate Doom, SDL, controles, importador e bridge JNI;
 - identidade visual original neon aplicada ao ícone do APK e ao cabeçalho do Game Hub;
+- `DOOM1.WAD` fornecido pelo usuário incluído como asset inicial e compartilhado com segurança por FileProvider quando um engine DOOM Android estiver instalado;
 - orientação fixa em Landscape para uso confortável com controles e teclado;
 - importação de arquivos `.exe` e `.msi` via Storage Access Framework;
 - botão **Jogar** por arquivo importado, conectado à bridge JNI e com erro explícito quando Wine/Box64/Box86 estiverem ausentes;

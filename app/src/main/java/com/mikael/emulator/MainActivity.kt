@@ -172,14 +172,21 @@ private fun MikaelApp() {
                 if (launchingGame == null) {
                     launchingGame = game.name
                     playMessage = "${game.name}: preparando o arquivo e verificando o runtime..."
-                    Thread {
-                        val result = launchGame(context, game)
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                            playMessage = result.message
-                            if (!result.success) errorMessage = result.message
-                            launchingGame = null
-                        }
-                    }.start()
+                    if (game.extension.uppercase() in setOf("WAD", "PK3")) {
+                        val result = launchDoomContent(context, game)
+                        playMessage = result.message
+                        if (!result.success) errorMessage = result.message
+                        launchingGame = null
+                    } else {
+                        Thread {
+                            val result = launchGame(context, game)
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                playMessage = result.message
+                                if (!result.success) errorMessage = result.message
+                                launchingGame = null
+                            }
+                        }.start()
+                    }
                 }
             }, Modifier.padding(padding))
             2 -> DiagnosticsScreen(diagnostics, Modifier.padding(padding))
@@ -605,7 +612,7 @@ private const val DEFAULT_DOOM_ID = "builtin-doom-profile"
 private fun defaultDoomProfile() = Game(
     id = DEFAULT_DOOM_ID,
     name = "DOOM",
-    executableUri = "builtin://doom",
+    executableUri = "asset://DOOM1.WAD",
     extension = "WAD",
     container = "DOOM Classic",
     lastPlayed = "Perfil inicial",
@@ -616,8 +623,7 @@ private fun defaultDoomProfile() = Game(
 private data class LaunchOutcome(val success: Boolean, val message: String)
 
 private fun launchGame(context: android.content.Context, game: Game): LaunchOutcome {
-    if (game.id == DEFAULT_DOOM_ID) return LaunchOutcome(false, "DOOM: perfil inicial pronto. Importe o seu DOOM1.WAD e instale/adicione um engine compatível, como GZDoom ou Chocolate Doom, para iniciar.")
-    if (game.extension.uppercase() in setOf("WAD", "PK3")) return LaunchOutcome(false, "${game.name}: ${game.extension} é conteúdo de jogo, não um executável. Instale ou forneça um engine compatível, como GZDoom ou Chocolate Doom, e associe este arquivo a ele.")
+    if (game.extension.uppercase() in setOf("WAD", "PK3")) return launchDoomContent(context, game)
     if (game.extension.uppercase() == "MSI") return LaunchOutcome(false, "${game.name}: instaladores MSI precisam do fluxo de instalação do Wine; importe o executável principal do jogo para iniciar.")
     if (!NativeBridge.isLoaded) return LaunchOutcome(false, "${game.name}: bridge nativa indisponível. Compile o módulo C++ antes de executar.")
     val executablePath = materializeExecutable(context, game)
@@ -634,6 +640,37 @@ private fun launchGame(context: android.content.Context, game: Game): LaunchOutc
         -102 -> LaunchOutcome(false, "${game.name}: bridge não inicializada.")
         else -> LaunchOutcome(false, "${game.name}: falha ao iniciar (código $result). Consulte os logs.")
     }
+}
+
+private fun launchDoomContent(context: android.content.Context, game: Game): LaunchOutcome {
+    val uri = resolveDoomUri(context, game) ?: return LaunchOutcome(false, "${game.name}: não foi possível preparar o WAD/PK3 para o engine DOOM.")
+    val mime = if (game.extension.uppercase() == "PK3") "application/zip" else "application/octet-stream"
+    val baseIntent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    val knownEngines = listOf("org.zdoom.gzdoom", "com.zandronum.zandronum")
+    for (enginePackage in knownEngines) {
+        val explicitIntent = Intent(baseIntent).setPackage(enginePackage)
+        if (explicitIntent.resolveActivity(context.packageManager) != null) {
+            return runCatching { context.startActivity(explicitIntent); LaunchOutcome(true, "${game.name}: aberto no engine DOOM instalado.") }
+                .getOrElse { LaunchOutcome(false, "${game.name}: o engine DOOM recusou o arquivo — ${it.message ?: "falha desconhecida"}.") }
+        }
+    }
+    return if (baseIntent.resolveActivity(context.packageManager) != null) {
+        runCatching {
+            context.startActivity(Intent.createChooser(baseIntent, "Abrir ${game.name} com engine DOOM"))
+            LaunchOutcome(true, "${game.name}: escolha um engine DOOM para abrir o arquivo.")
+        }.getOrElse { LaunchOutcome(false, "${game.name}: não foi possível abrir o seletor de engine.") }
+    } else LaunchOutcome(false, "${game.name}: nenhum engine DOOM Android foi encontrado. Instale GZDoom ou Chocolate Doom e tente novamente.")
+}
+
+private fun resolveDoomUri(context: android.content.Context, game: Game): Uri? {
+    if (!game.executableUri.startsWith("asset://")) return Uri.parse(game.executableUri)
+    val assetName = game.executableUri.removePrefix("asset://")
+    val file = java.io.File(context.cacheDir, "games/$assetName")
+    return runCatching {
+        file.parentFile?.mkdirs()
+        context.assets.open(assetName).use { input -> java.io.FileOutputStream(file, false).use { output -> input.copyTo(output) } }
+        androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }.getOrNull()
 }
 
 private fun materializeExecutable(context: android.content.Context, game: Game): String? {
@@ -703,7 +740,7 @@ private fun loadGames(context: android.content.Context): List<Game> {
             Game(
                 id = item.optString("id").ifBlank { java.util.UUID.randomUUID().toString() },
                 name = item.optString("name", "Jogo sem nome"),
-                executableUri = item.optString("uri"),
+                executableUri = item.optString("uri").let { uri -> if (item.optString("id") == DEFAULT_DOOM_ID && uri.startsWith("builtin://")) "asset://DOOM1.WAD" else uri },
                 extension = item.optString("extension", "EXE"),
                 container = item.optString("container", "Padrão"),
                 lastPlayed = item.optString("lastPlayed", "Nunca iniciado"),

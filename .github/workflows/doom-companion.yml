@@ -36,6 +36,10 @@ jobs:
         working-directory: companion-source
         run: sed -i '/^org.gradle.java.home=/d' gradle.properties
 
+      - name: Lower companion minimum Android version
+        working-directory: companion-source
+        run: sed -i 's/minSdk = 33/minSdk = 24/' doom/build.gradle.kts
+
       - name: Build UZDoom companion APK
         working-directory: companion-source
         run: ./gradlew :doom:assembleDebug --no-daemon

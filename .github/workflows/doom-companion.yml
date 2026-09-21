@@ -16,7 +16,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: manuelsiuro/GZDoom-Android-2026
-          ref: main
           path: companion-source
 
       - name: Set up Java 17

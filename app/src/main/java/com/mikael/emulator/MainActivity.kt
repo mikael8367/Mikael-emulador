@@ -103,7 +103,7 @@ private fun MikaelTheme(content: @Composable () -> Unit) {
 private fun MikaelApp() {
     var tab by remember { mutableIntStateOf(0) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val games = remember { mutableStateListOf<Game>().apply { addAll(loadGames(context)) } }
+    val games = remember { mutableStateListOf<Game>().apply { addAll(loadGames(context).ifEmpty { listOf(defaultDoomProfile()) }) } }
     var selectedGame by remember { mutableStateOf<Game?>(null) }
     var pendingGame by remember { mutableStateOf<Game?>(null) }
     var importMessage by remember { mutableStateOf<String?>(null) }
@@ -196,6 +196,7 @@ private fun MikaelApp() {
                     pendingGame = null
                     return@GameConfirmationDialog
                 }
+                if (game.name.contains("doom", ignoreCase = true)) games.removeAll { it.id == DEFAULT_DOOM_ID }
                 games.add(game)
                 saveGames(context, games)
                 pendingGame = null
@@ -303,12 +304,14 @@ private fun GameConfirmationDialog(game: Game, onPickCover: () -> Unit, onConfir
 private fun ErrorDialog(context: android.content.Context, message: String, onDismiss: () -> Unit) {
     var copied by remember { mutableStateOf(false) }
     val component = when {
+        message.contains("DOOM", ignoreCase = true) || message.contains("WAD", ignoreCase = true) || message.contains("PK3", ignoreCase = true) -> "Engine DOOM / GZDoom"
         message.contains("runtime", ignoreCase = true) -> "Wine / Box64 / Box86"
         message.contains("bridge", ignoreCase = true) -> "Bridge JNI / C++"
         message.contains("permissão", ignoreCase = true) -> "Armazenamento Android"
         else -> "Process Manager"
     }
     val solution = when {
+        message.contains("DOOM", ignoreCase = true) || message.contains("WAD", ignoreCase = true) || message.contains("PK3", ignoreCase = true) -> "Importe o seu DOOM1.WAD e instale ou disponibilize um engine compatível, como GZDoom ou Chocolate Doom."
         message.contains("runtime", ignoreCase = true) -> "Instale um runtime Windows compatível e tente novamente. O app não baixa binários automaticamente."
         message.contains("permissão", ignoreCase = true) -> "Reimporte o arquivo usando um provedor de arquivos que permita acesso persistente."
         message.contains("bridge", ignoreCase = true) -> "Verifique se a biblioteca nativa arm64 foi compilada e incluída no APK."
@@ -578,9 +581,23 @@ private fun ComponentCard(name: String, detail: String, modifier: Modifier = Mod
 @Composable
 private fun LegalNotice() { Text("Sem root • sem downloads automáticos • seus arquivos permanecem sob seu controle", color = Color(0xFF777188), modifier = Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.labelSmall) }
 
+private const val DEFAULT_DOOM_ID = "builtin-doom-profile"
+
+private fun defaultDoomProfile() = Game(
+    id = DEFAULT_DOOM_ID,
+    name = "DOOM",
+    executableUri = "builtin://doom",
+    extension = "WAD",
+    container = "DOOM Classic",
+    lastPlayed = "Perfil inicial",
+    runtime = "Engine pendente",
+    fileSize = "Aguardando DOOM1.WAD"
+)
+
 private data class LaunchOutcome(val success: Boolean, val message: String)
 
 private fun launchGame(context: android.content.Context, game: Game): LaunchOutcome {
+    if (game.id == DEFAULT_DOOM_ID) return LaunchOutcome(false, "DOOM: perfil inicial pronto. Importe o seu DOOM1.WAD e instale/adicione um engine compatível, como GZDoom ou Chocolate Doom, para iniciar.")
     if (game.extension.uppercase() in setOf("WAD", "PK3")) return LaunchOutcome(false, "${game.name}: ${game.extension} é conteúdo de jogo, não um executável. Instale ou forneça um engine compatível, como GZDoom ou Chocolate Doom, e associe este arquivo a ele.")
     if (game.extension.uppercase() == "MSI") return LaunchOutcome(false, "${game.name}: instaladores MSI precisam do fluxo de instalação do Wine; importe o executável principal do jogo para iniciar.")
     if (!NativeBridge.isLoaded) return LaunchOutcome(false, "${game.name}: bridge nativa indisponível. Compile o módulo C++ antes de executar.")

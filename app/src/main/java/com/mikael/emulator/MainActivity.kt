@@ -572,6 +572,8 @@ private fun ComponentsScreen(diagnostics: DeviceDiagnostics, modifier: Modifier)
         Triple("OpenGL ES", "Fallback gráfico", diagnostics.openGl),
         Triple("GZDoom", "Engine para DOOM, WAD e PK3", "Não instalado"),
         Triple("Chocolate Doom", "Engine clássico para WAD", "Não instalado"),
+        Triple("UZDoom Companion", "Engine real para WAD/PK3 com toque", "APK separado"),
+        Triple("Windows Companion", "Wine + Box64/Box86 + DXVK para EXE", "APK separado"),
         Triple("Gamepad e teclado", "Entrada e mapeamento de controles", "Interface pronta"),
         Triple("Áudio SDL", "Som e música dos engines", "Pendente"),
         Triple("Importador de jogos", "EXE, MSI, WAD e PK3", "Disponível"),
@@ -624,7 +626,7 @@ private data class LaunchOutcome(val success: Boolean, val message: String)
 
 private fun launchGame(context: android.content.Context, game: Game): LaunchOutcome {
     if (game.extension.uppercase() in setOf("WAD", "PK3")) return launchDoomContent(context, game)
-    if (game.extension.uppercase() == "MSI") return LaunchOutcome(false, "${game.name}: instaladores MSI precisam do fluxo de instalação do Wine; importe o executável principal do jogo para iniciar.")
+    if (game.extension.uppercase() in setOf("EXE", "MSI")) return launchWindowsContent(context, game)
     if (!NativeBridge.isLoaded) return LaunchOutcome(false, "${game.name}: bridge nativa indisponível. Compile o módulo C++ antes de executar.")
     val executablePath = materializeExecutable(context, game)
         ?: return LaunchOutcome(false, "${game.name}: não foi possível ler o arquivo selecionado. Verifique a permissão do provedor Android.")
@@ -640,6 +642,21 @@ private fun launchGame(context: android.content.Context, game: Game): LaunchOutc
         -102 -> LaunchOutcome(false, "${game.name}: bridge não inicializada.")
         else -> LaunchOutcome(false, "${game.name}: falha ao iniciar (código $result). Consulte os logs.")
     }
+}
+
+private fun launchWindowsContent(context: android.content.Context, game: Game): LaunchOutcome {
+    val uri = Uri.parse(game.executableUri)
+    val mime = if (game.extension.uppercase() == "MSI") "application/x-msi" else "application/vnd.microsoft.portable-executable"
+    val baseIntent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    val companionPackages = listOf("com.winlator", "com.winlator.cmod", "com.winlator.wb64")
+    for (companionPackage in companionPackages) {
+        val explicitIntent = Intent(baseIntent).setPackage(companionPackage)
+        if (explicitIntent.resolveActivity(context.packageManager) != null) {
+            return runCatching { context.startActivity(explicitIntent); LaunchOutcome(true, "${game.name}: enviado ao companion Windows.") }
+                .getOrElse { LaunchOutcome(false, "${game.name}: o companion Windows recusou o arquivo — ${it.message ?: "falha desconhecida"}.") }
+        }
+    }
+    return LaunchOutcome(false, "${game.name}: instale o companion Windows (Wine + Box64/Box86 + DXVK) para executar EXE/MSI. O hub não baixa runtimes automaticamente.")
 }
 
 private fun launchDoomContent(context: android.content.Context, game: Game): LaunchOutcome {

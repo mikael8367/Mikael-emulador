@@ -22,6 +22,8 @@ O app já inclui:
 - catálogo ampliado de componentes com Wine, Box64/Box86, DXVK, VKD3D-Proton, Mesa/Vulkan, OpenGL ES, GZDoom, Chocolate Doom, SDL, controles, importador e bridge JNI;
 - identidade visual original neon aplicada ao ícone do APK e ao cabeçalho do Game Hub;
 - `DOOM1.WAD` fornecido pelo usuário incluído como asset inicial e compartilhado com segurança por FileProvider quando um engine DOOM Android estiver instalado;
+- roteamento por formato: WAD/PK3 para o UZDoom Engine Companion e EXE/MSI para um Windows Companion baseado em Wine/Box64/Box86/DXVK;
+- workflow `UZDoom Engine Companion` no GitHub Actions para gerar o APK separado do engine real usando a base Android moderna;
 - orientação fixa em Landscape para uso confortável com controles e teclado;
 - importação de arquivos `.exe` e `.msi` via Storage Access Framework;
 - botão **Jogar** por arquivo importado, conectado à bridge JNI e com erro explícito quando Wine/Box64/Box86 estiverem ausentes;

@@ -181,7 +181,7 @@ private fun MikaelApp() {
                 }
             }, Modifier.padding(padding))
             2 -> DiagnosticsScreen(diagnostics, Modifier.padding(padding))
-            3 -> ComponentsScreen(Modifier.padding(padding))
+            3 -> ComponentsScreen(diagnostics, Modifier.padding(padding))
             else -> SettingsScreen(context, diagnostics, Modifier.padding(padding))
         }
     }
@@ -550,18 +550,31 @@ private fun DiagnosticCard(title: String, rows: List<Pair<String, String>>, modi
 }
 
 @Composable
-private fun ComponentsScreen(modifier: Modifier) {
-    val components = listOf("Wine" to "API Windows", "Box64 / Box86" to "Tradução x64/x86 para ARM64", "DXVK" to "DirectX 9/10/11 via Vulkan", "VKD3D-Proton" to "DirectX 12 via Vulkan", "Mesa / Vulkan" to "Backend gráfico")
+private fun ComponentsScreen(diagnostics: DeviceDiagnostics, modifier: Modifier) {
+    val components = listOf(
+        Triple("Wine", "API Windows para executáveis", diagnostics.wine),
+        Triple("Box64 / Box86", "Tradução x64/x86 para ARM64", if (diagnostics.box64 == "Disponível" || diagnostics.box86 == "Disponível") "Disponível" else "Não instalado"),
+        Triple("DXVK", "DirectX 9/10/11 via Vulkan", diagnostics.dxvk),
+        Triple("VKD3D-Proton", "DirectX 12 via Vulkan", diagnostics.vkd3d),
+        Triple("Mesa / Vulkan", "Backend gráfico do Android", diagnostics.vulkan),
+        Triple("OpenGL ES", "Fallback gráfico", diagnostics.openGl),
+        Triple("GZDoom", "Engine para DOOM, WAD e PK3", "Não instalado"),
+        Triple("Chocolate Doom", "Engine clássico para WAD", "Não instalado"),
+        Triple("Gamepad e teclado", "Entrada e mapeamento de controles", "Interface pronta"),
+        Triple("Áudio SDL", "Som e música dos engines", "Pendente"),
+        Triple("Importador de jogos", "EXE, MSI, WAD e PK3", "Disponível"),
+        Triple("Bridge JNI/C++", "Ponte para o runtime nativo", if (NativeBridge.isLoaded) "Disponível" else "Ausente")
+    )
     BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         val wide = maxWidth >= 700.dp
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 18.dp)) {
             item { Header(); Text("Componentes", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text("Instalação controlada e compatível com licenças.", color = Muted) }
             if (wide) {
                 items(components.chunked(2)) { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { pair.forEach { (name, detail) -> ComponentCard(name, detail, Modifier.weight(1f)) }; if (pair.size == 1) Spacer(Modifier.weight(1f)) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { pair.forEach { (name, detail, status) -> ComponentCard(name, detail, status, Modifier.weight(1f)) }; if (pair.size == 1) Spacer(Modifier.weight(1f)) }
                 }
             } else {
-                items(components) { (name, detail) -> ComponentCard(name, detail) }
+                items(components) { (name, detail, status) -> ComponentCard(name, detail, status) }
             }
             item { TextButton(onClick = { android.util.Log.i("Mikael", "Licenças serão exibidas na próxima etapa") }) { Text("Ver licenças e fontes", color = Violet) } }
         }
@@ -569,11 +582,12 @@ private fun ComponentsScreen(modifier: Modifier) {
 }
 
 @Composable
-private fun ComponentCard(name: String, detail: String, modifier: Modifier = Modifier) {
+private fun ComponentCard(name: String, detail: String, status: String, modifier: Modifier = Modifier) {
     Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = .06f))) {
         Row(Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text(name, fontWeight = FontWeight.SemiBold); Text(detail, color = Muted, style = MaterialTheme.typography.bodySmall) }
-            FilterChip(selected = false, onClick = { android.util.Log.i("Mikael", "$name ainda não implementado") }, label = { Text("Pendente", style = MaterialTheme.typography.labelSmall) })
+            val ready = status.contains("Disponível") || status.contains("Pronta")
+            Surface(color = (if (ready) Mint else Amber).copy(alpha = .12f), shape = RoundedCornerShape(7.dp)) { Text(status.uppercase(), color = if (ready) Mint else Amber, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) }
         }
     }
 }

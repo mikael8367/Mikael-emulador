@@ -19,6 +19,7 @@ O app já inclui:
 - importação de conteúdo `.wad` e `.pk3`, com preflight que exige um engine compatível em vez de tentar executá-los como `.exe`;
 - seletor de arquivos amplo para localizar WAD em pastas como Downloads e opção de escolher uma foto de capa persistente na confirmação do jogo;
 - perfil inicial **DOOM** sem arquivos protegidos incluídos; ao importar um `DOOM1.WAD` próprio, o perfil inicial é substituído pelo jogo real;
+- catálogo ampliado de componentes com Wine, Box64/Box86, DXVK, VKD3D-Proton, Mesa/Vulkan, OpenGL ES, GZDoom, Chocolate Doom, SDL, controles, importador e bridge JNI;
 - orientação fixa em Landscape para uso confortável com controles e teclado;
 - importação de arquivos `.exe` e `.msi` via Storage Access Framework;
 - botão **Jogar** por arquivo importado, conectado à bridge JNI e com erro explícito quando Wine/Box64/Box86 estiverem ausentes;

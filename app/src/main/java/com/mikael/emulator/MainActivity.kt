@@ -113,8 +113,8 @@ private fun MikaelApp() {
         if (uri == null) return@rememberLauncherForActivityResult
         val name = getDisplayName(context, uri)
         val extension = name.substringAfterLast('.', "arquivo").uppercase()
-        if (extension !in setOf("EXE", "MSI")) {
-            importMessage = "Escolha um arquivo .exe ou .msi do seu próprio jogo."
+        if (extension !in setOf("EXE", "MSI", "WAD", "PK3")) {
+            importMessage = "Escolha um arquivo .exe, .msi, .wad ou .pk3 do seu próprio jogo."
             return@rememberLauncherForActivityResult
         }
         val persisted = runCatching {
@@ -157,8 +157,8 @@ private fun MikaelApp() {
         }
     ) { padding ->
         when (tab) {
-            0 -> DashboardScreen(games.size, diagnostics, { picker.launch(arrayOf("application/octet-stream", "application/x-msdownload")) }, Modifier.padding(padding))
-            1 -> LibraryScreen(games, selectedGame, { selectedGame = it }, { picker.launch(arrayOf("application/octet-stream", "application/x-msdownload")) }, importMessage, playMessage, diagnostics, { game ->
+            0 -> DashboardScreen(games.size, diagnostics, { picker.launch(arrayOf("application/octet-stream", "application/x-msdownload", "application/zip")) }, Modifier.padding(padding))
+            1 -> LibraryScreen(games, selectedGame, { selectedGame = it }, { picker.launch(arrayOf("application/octet-stream", "application/x-msdownload", "application/zip")) }, importMessage, playMessage, diagnostics, { game ->
                 if (launchingGame == null) {
                     launchingGame = game.name
                     playMessage = "${game.name}: preparando o arquivo e verificando o runtime..."
@@ -458,7 +458,7 @@ private fun EmptyLibrary(onImport: () -> Unit) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("⌁", color = Violet, style = MaterialTheme.typography.displaySmall)
             Text("Sua biblioteca está vazia", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            Text("Comece adicionando um executável que você possui. O Mikael não baixa jogos automaticamente.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text("Comece adicionando um executável ou conteúdo de jogo que você possui. O Mikael não baixa jogos automaticamente.", color = Muted, style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = onImport) { Text("Adicionar meu primeiro jogo", color = Violet, fontWeight = FontWeight.Bold) }
         }
     }
@@ -484,7 +484,7 @@ private fun GameCard(game: Game, onSelect: (Game) -> Unit, selected: Boolean, on
                 Text("${game.extension}  •  ${game.container}", color = Muted, style = MaterialTheme.typography.bodySmall)
                 Text("${game.fileSize}  •  ${game.lastPlayed}", color = Color(0xFF777188), style = MaterialTheme.typography.labelSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Surface(color = Amber.copy(alpha = .12f), shape = RoundedCornerShape(6.dp)) { Text("RUNTIME PENDENTE", color = Amber, modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) }
+                    Surface(color = Amber.copy(alpha = .12f), shape = RoundedCornerShape(6.dp)) { Text(if (game.extension in setOf("WAD", "PK3")) "ENGINE PENDENTE" else "RUNTIME PENDENTE", color = Amber, modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) }
                 }
             }
             Button(onClick = { onPlay(game) }, colors = ButtonDefaults.buttonColors(containerColor = Violet), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp), shape = RoundedCornerShape(11.dp)) { Text("Jogar", fontWeight = FontWeight.Bold) }
@@ -566,6 +566,7 @@ private fun LegalNotice() { Text("Sem root • sem downloads automáticos • se
 private data class LaunchOutcome(val success: Boolean, val message: String)
 
 private fun launchGame(context: android.content.Context, game: Game): LaunchOutcome {
+    if (game.extension.uppercase() in setOf("WAD", "PK3")) return LaunchOutcome(false, "${game.name}: ${game.extension} é conteúdo de jogo, não um executável. Instale ou forneça um engine compatível, como GZDoom ou Chocolate Doom, e associe este arquivo a ele.")
     if (game.extension.uppercase() == "MSI") return LaunchOutcome(false, "${game.name}: instaladores MSI precisam do fluxo de instalação do Wine; importe o executável principal do jogo para iniciar.")
     if (!NativeBridge.isLoaded) return LaunchOutcome(false, "${game.name}: bridge nativa indisponível. Compile o módulo C++ antes de executar.")
     val executablePath = materializeExecutable(context, game)
@@ -585,7 +586,7 @@ private fun launchGame(context: android.content.Context, game: Game): LaunchOutc
 }
 
 private fun materializeExecutable(context: android.content.Context, game: Game): String? {
-    val destination = java.io.File(context.filesDir, "games/${safeFilePart(game.id)}.exe")
+    val destination = java.io.File(context.filesDir, "games/${safeFilePart(game.id)}.${game.extension.lowercase()}")
     return runCatching {
         destination.parentFile?.mkdirs()
         val source = Uri.parse(game.executableUri)
